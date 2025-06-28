@@ -25,7 +25,7 @@ class CalendarManager:
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", self.SCOPES
+                    os.getenv('CREDENTIALS_PATH'), self.SCOPES
                 )
                 creds = flow.run_local_server(port=0)
             
@@ -35,21 +35,14 @@ class CalendarManager:
         
         self.service = build('calendar', 'v3', credentials=creds)
     
-    def create_event(self, summary, start_time, end_time, description=None):
+    def create_event(self, event_data: dict):
         """Create a calendar event"""
         try:
-            event = {
-                'summary': summary,
-                'start': {'dateTime': start_time.isoformat()},
-                'end': {'dateTime': end_time.isoformat()},
-                'description': description or f"Created via SMS Calendar Assistant"
-            }
             
             result = self.service.events().insert(
                 calendarId='primary', 
-                body=event
+                body=event_data
             ).execute()
-            
             return result
         except HttpError as error:
             print(f"An error occurred: {error}")

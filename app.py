@@ -12,24 +12,6 @@ logging.basicConfig(level=logging.DEBUG)
 from calen import CalendarManager
 from process import processText
 
-
-@app.route('/sms', methods=['POST'])
-def message():
-    incoming_msg = request.form.get('Body', '').strip()
-    from_number = request.form.get('From')
-    
-    print(f"Received SMS from {from_number}: {incoming_msg}")
-    
-    # Process the calendar request
-    response_text = 'yo'
-    
-    # Send response back
-    resp = MessagingResponse()
-    resp.message(response_text)
-    
-    return str(resp)
-
-
 @app.route('/voice', methods=['GET', 'POST'])
 def voice():
     print(f"=== WEBHOOK RECEIVED ===")
@@ -53,27 +35,52 @@ def voice():
     response.say("I didn't hear anything. Please try calling again.")
     return str(response)
 
+@app.route('/sms', methods=['POST'])
+def message():
+    incoming_msg = request.form.get('Body', '').strip()
+    from_number = request.form.get('From')
+    
+    print(f"Received SMS from {from_number}: {incoming_msg}")
+    
+    # Process the calendar request
+    response_text = create_event(incoming_msg)
+    # Send response back
+    resp = MessagingResponse()
+    resp.message(response_text)
+    
+    return str(resp)
+
+
+
+
 
 
 calendar_mgr = CalendarManager()
-
-@app.route('/create-event', methods=['POST'])
-def create_event():
+def create_event(prompt: str):
     try:
-        data = request.json()
-        if not data:
-            return {
-                "error processing request"
-            }
-        prompt = data['prompt']
+        # Use the global calendar manager
         event_data = processText(prompt)
-        if calendar_mgr.create_event(event_data):
-            return "event created"
-        else:
-            return 'failed to create event'
+        
+        # Debug: Check what processText returns
+        print(f"processText returned: {event_data}")
+        
+        if event_data is None:
+            return "❌ Could not parse your message. Try: 'Meeting with John tomorrow at 3pm'"
+        
+        if not isinstance(event_data, dict):
+            return "❌ Invalid event data format"
+        
+        # Check required fields
+        if 'summary' not in event_data or 'start' not in event_data or 'end' not in event_data:
+            return "❌ Missing required event fields (summary, start, end)"
+        
+        result = calendar_mgr.create_event(event_data)
+                
+        if result:
+            return f"✅ Event created: {event_data.get('summary', 'Untitled')}"
     except Exception as e:
-        print(f'{e}')
-
+        return "❌ Failed to create event"
+        
 
 
 

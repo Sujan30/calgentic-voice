@@ -1,37 +1,58 @@
-from google import genai
-import os
-from dotenv import load_dotenv
+from calen import CalendarManager
+import json
 
-load_dotenv()
+def processOutput(events):
+  if isinstance(events, str):
+        events = json.loads(events)
+  
+  event_data = []
+  for event in events:
+        event_data.append(add_relevant_info(event))
+  
+  return event_data #all the info formatted well
 
-client = genai.Client(
-    api_key=os.getenv('GEMINI_API_KEY')
-)
 
+def createEvents(event_data):
+      cal = CalendarManager()
+      for event in event_data:
+            try:
+                cal.create_event(event)
+                
+            except Exception as e:
+                print(f'error adding event {e}')
+    
+          
 
-def processText(text: str):
-    response = client.models.generate_content(
-    model="gemini-2.0-flash-lite",
-    contents=[
-        """Your goal is to take the users text and turn it into a json format like this:
-        event = {
-  'summary': 'Google I/O 2015',
-  'location': '800 Howard St., San Francisco, CA 94103',
-  'description': 'A chance to hear more about Google\'s developer products.',
+def add_relevant_info(event):
+    from datetime import datetime, timedelta
+    
+    # Handle null end_time
+    start_time = event['start_time']
+    end_time = event['end_time']
+    
+    if end_time is None:
+        # Parse start time and add 1 hour
+        start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+        end_dt = start_dt + timedelta(hours=1)
+        end_time = end_dt.isoformat()
+
+    event_data = {
+  'summary': event['name'],
+  'location': '',
+  'description': event['description'],
   'start': {
-    'dateTime': '2015-05-28T09:00:00-07:00',
+    'dateTime': event['start_time'],
     'timeZone': 'America/Los_Angeles',
   },
   'end': {
-    'dateTime': '2015-05-28T17:00:00-07:00',
+    'dateTime': event['end_time'],
     'timeZone': 'America/Los_Angeles',
   },
   'recurrence': [
     'RRULE:FREQ=DAILY;COUNT=2'
   ],
   'attendees': [
-    {'email': 'lpage@example.com'},
-    {'email': 'sbrin@example.com'},
+    {'email': 'lpage@example.com'} #to do: Add jasons email
   ],
   'reminders': {
     'useDefault': False,
@@ -40,15 +61,6 @@ def processText(text: str):
       {'method': 'popup', 'minutes': 10},
     ],
   },
-} Only return the information in json format and nothing else, like legit nothing else.  
-        """,
-        [f'here is the users query: {text}']
-    ]
+}
+    return event_data
   
-)
-    return response.text.replace('json','').replace('```','')
-
-event_data = processText('I have a meeting tomorrow at 3pm')
-
-
-
