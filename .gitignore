@@ -4,3 +4,4 @@ venv/
 config/
 token.json
 .hello
+monterey-calendar-updates.patch

@@ -1,5 +1,6 @@
 from calen import CalendarManager
 import json
+import re
 
 def processOutput(events):
   if isinstance(events, str):
@@ -11,6 +12,37 @@ def processOutput(events):
   
   return event_data #all the info formatted well
 
+
+def extract_address(description: str) -> str:
+    """Extract address/location from event description"""
+    if not description:
+        return ""
+    
+    location_patterns = [
+        r'downtown\s+(Carmel[^,]*)',
+        r'(WeatherTech Raceway[^,]*)',
+        r'(Laguna Seca[^,]*)',
+        r'(Pebble Beach[^,]*)',
+        r'(Carmel-by-the-Sea|Carmel by-the-Sea)',
+        r'(Monterey[^,]*)',
+        r'(Pacific Grove[^,]*)',
+        r'at\s+([^,]+(?:Avenue|Ave|Street|St|Road|Rd|Drive|Dr|Boulevard|Blvd|Way|Lane|Ln)[^,]*)',
+        r'on\s+([^,]+(?:Avenue|Ave|Street|St)[^,]*)',
+        r'(Golf Links[^,]*)',
+        r'(Ocean Ave[^,]*)',
+        r'(Alvarado St[^,]*)'
+    ]
+    
+    for pattern in location_patterns:
+        match = re.search(pattern, description, re.IGNORECASE)
+        if match:
+            location = match.group(1).strip()
+            location = re.sub(r'^(at|on|in)\s+', '', location, flags=re.IGNORECASE)
+            location = re.sub(r'\s*\([^)]*\).*$', '', location)  # Remove parenthetical content
+            location = re.sub(r'\s*:.*$', '', location)  # Remove content after colon
+            return location.strip()
+    
+    return ""
 
 def createEvents(event_data):
       cal = CalendarManager()
@@ -38,7 +70,7 @@ def add_relevant_info(event):
 
     event_data = {
   'summary': event['name'],
-  'location': '',
+  'location': extract_address(event['description']),
   'description': event['description'],
   'start': {
     'dateTime': event['start_time'],
@@ -52,7 +84,7 @@ def add_relevant_info(event):
     'RRULE:FREQ=DAILY;COUNT=2'
   ],
   'attendees': [
-    {'email': 'lpage@example.com'} #to do: Add jasons email
+    {'email': 'jpganoedelariva@gmail.com'}
   ],
   'reminders': {
     'useDefault': False,
@@ -63,4 +95,8 @@ def add_relevant_info(event):
   },
 }
     return event_data
+
+def processText(prompt: str):
+    """Simple text processing for voice/SMS interface"""
+    return None
   
